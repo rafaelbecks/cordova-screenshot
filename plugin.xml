@@ -33,6 +33,11 @@
                 <param name="ios-package" value="Screenshot"/>
             </feature>
         </config-file>
+
+        <config-file target="*-Info.plist" parent="NSPhotoLibraryUsageDescription">
+            <string>Open the photo library to recognise objects</string>
+        </config-file>
+
         <header-file src="src/ios/Screenshot.h" />
         <source-file src="src/ios/Screenshot.m" />
     </platform>
