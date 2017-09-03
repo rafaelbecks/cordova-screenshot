@@ -258,7 +258,8 @@ typedef enum
         __block PHAsset *currentAsset;
         __block NSString *image64;
         __block BOOL running;
-        __block NSDictionary *result;
+        __block BOOL cropResult = NO;
+        __block NSMutableDictionary *result = [[NSMutableDictionary alloc] init];
         __block NSString *errorMessage;
         
         running = YES;
@@ -285,28 +286,22 @@ typedef enum
                                 step = ScreenshotGet64StepGetUrl;
                             }
                             else {
-                                result = @{
-                                           @"URI" : image64,
-                                           @"success" : @"true"
-                                           };
+                                cropResult = YES;
+                                [result setValue:@"true" forKey:@"success"];
                                 step = ScreenshotGet64StepFinish;
                             }
                         }
                         else
                         {
-                            result = @{
-                                       @"message" : errorMessage,
-                                       @"success" : @"false"
-                                       };
+                            [result setValue:@"false" forKey:@"success"];
+                            [result setValue:errorMessage forKey:@"message"];
                             step = ScreenshotGet64StepFinish;
                         }
                     }
                     else if([PHPhotoLibrary authorizationStatus] == AVAuthorizationStatusDenied)
                     {
-                        result = @{
-                                   @"message" : @"I need access to Photo Library...",
-                                   @"success" : @"false"
-                                   };
+                        [result setValue:@"false" forKey:@"success"];
+                        [result setValue:@"I need access to Photo Library..." forKey:@"message"];
                         step = ScreenshotGet64StepFinish;
                     }
                     else
@@ -366,9 +361,42 @@ typedef enum
                     //NSLog(@"ScreenshotGet64Step : Finish...");
                     step = ScreenshotGet64StepRendering;
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary: result];
-                        NSString* callbackId = command.callbackId;
-                        [this.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
+                        
+                        unsigned long pivot = 0;
+                        long lenght = 32000;
+                        double percent = 0;
+                        BOOL completed = NO;
+                        NSString* data = @"";
+                        if (cropResult)
+                        {
+                            while (!completed)
+                            {
+                                if (pivot+lenght> [image64 length])
+                                    data = [image64 substringFromIndex:pivot];
+                                else
+                                    data = [image64 substringWithRange:NSMakeRange(pivot, lenght)];
+                                pivot += [data length];
+                                percent = (pivot / (double)[image64 length])*100;
+                                completed = pivot == [image64 length];
+                                //NSLog(@"Sended: %.02f", percent);
+                                [result setValue:data forKey:@"data"];
+                                [result setValue:[NSString stringWithFormat:@"%.02f", percent] forKey:@"percent"];
+                                [result setValue:fileName forKey:@"name"];
+                                [result setValue:completed ? @"true" : @"false" forKey:@"completed"];
+                                CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:result];
+                                
+                                [pluginResult setKeepCallbackAsBool: true];
+                                NSString* callbackId = command.callbackId;
+                                [this.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
+                            }
+                        }
+                        else
+                        {
+                            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary: result];
+                            NSString* callbackId = command.callbackId;
+                            [pluginResult setKeepCallbackAsBool: true];
+                            [this.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
+                        }
                     });
                     running =NO;
                     break;
