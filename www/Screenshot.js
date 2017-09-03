@@ -22,13 +22,23 @@ module.exports = {
 		}, "Screenshot", "saveScreenshot", [format, quality, filename]);
 	},
 
-	URI:function(callback, quality){
+	URI:function(callback, quality) {
 		quality = typeof(quality) !== 'number'?100:quality;
 		exec(function(res){
 			callback && callback(null, res);
 		}, function(error){
 			callback && callback(error);
 		}, "Screenshot", "getScreenshotAsURI", [quality]);
+
+	},
+
+	get:function(callback, quality, albumname, filename) {
+		quality = typeof(quality) !== 'number'?100:quality;
+		exec(function(res){
+			callback && callback(null, res);
+		}, function(error){
+			callback && callback(error);
+		}, "Screenshot", "getResourceAsURI", [quality, albumname, filename]);
 
 	}
 };
